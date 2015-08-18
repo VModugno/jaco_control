@@ -17,7 +17,7 @@ int main()
 	 int time_step = 1; // ms
 	 int index = 0;
 
-	safety_check = new boost::thread(boost::bind(&EmergencyStop));
+
 	//Function pointers to the functions we need
 	int (*MyInitAPI)();
 	int (*MyCloseAPI)();
@@ -180,7 +180,8 @@ int main()
 
 			}
 		}
-
+		// qfter init i lunch the security check thread
+		safety_check = new boost::thread(boost::bind(&EmergencyStop));
 
 		// change the controller type per il controllore in uso
 		if(CONTROL_TYPE.compare("joint") == 0 )
