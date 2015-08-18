@@ -9,7 +9,7 @@ int main()
 	 //Handle for the library's command layer.
 	 void * commandLayer_handle;
 	 boost::thread* safety_check;
-	 bool INITIALIZE =	false;
+	 bool INITIALIZE =	true; // if you want to initialize
 	 std::string CONTROL_TYPE = "joint"; // "joint" "cartesian"
 	 boost::chrono::high_resolution_clock::time_point time_reference;
 	 boost::chrono::milliseconds cur_time;
@@ -168,193 +168,197 @@ int main()
 			trajectoryPoint.Position.CartesianPosition.ThetaZ = start_point[0][5];
 		}
 
-		if(INITIALIZE)
-			(*MySendAdvanceTrajectory)(trajectoryPoint);
-		else
+		(*MySendAdvanceTrajectory)(trajectoryPoint);
+		std::cout<< "Waiting for the completion of the initialization. When is done press i"<<std::endl;
+		// waiting for the completion of the initialization to start the trajectory tracking
+		while(INITIALIZE)
 		{
-            // change the controller type per il controllore in uso
-			if(CONTROL_TYPE.compare("joint") == 0 )
-				trajectoryPoint.Position.Type = ANGULAR_VELOCITY;
-			else if(CONTROL_TYPE.compare("cartesian") == 0 )
-				trajectoryPoint.Position.Type = CARTESIAN_VELOCITY;
-			// inzializzo desired value
-			State init;
-			desired_values.push_back(init);
-			desired_values.push_back(init);
-
-			// initialize time reference
-			time_reference = boost::chrono::high_resolution_clock::now();
-			cur_time = boost::chrono::duration_cast<boost::chrono::milliseconds>(boost::chrono::high_resolution_clock::now() - time_reference);
-
-			while( cur_time.count() < total_time)
-			//while(true)
+			if (sf::Keyboard::isKeyPressed(sf::Keyboard::I))
 			{
-				boost::chrono::high_resolution_clock::time_point begin = boost::chrono::high_resolution_clock::now();
-
-				// read from robot
-				(*MyGetAngularPosition)(position);
-				(*MyGetCartesianPosition)(cart_pos);
-				//(MyGetAngularForce)(joint_tau);
-				// save data
-				Log_position.push_back(position);
-				Log_cartesian.push_back(cart_pos);
-
-				//trascrivo torque
-				/*State tau(6);
-				tau[0]=joint_tau.Actuators.Actuator1;
-				tau[1]=joint_tau.Actuators.Actuator2;
-				tau[2]=joint_tau.Actuators.Actuator3;
-				tau[3]=joint_tau.Actuators.Actuator4;
-				tau[4]=joint_tau.Actuators.Actuator5;
-				tau[5]=joint_tau.Actuators.Actuator6;*/
-
-				// trascrivo joint
-				State joint_pos(6);
-				joint_pos[0]=position.Actuators.Actuator1;
-				joint_pos[1]=position.Actuators.Actuator2;
-				joint_pos[2]=position.Actuators.Actuator3;
-				joint_pos[3]=position.Actuators.Actuator4;
-				joint_pos[4]=position.Actuators.Actuator5;
-				joint_pos[5]=position.Actuators.Actuator6;
-
-				joint_pos = joint_pos*DEG;
-				// trascrivo cartesian
-				State cart(3);
-
-				cart[0] = cart_pos.Coordinates.X;
-				cart[1] = cart_pos.Coordinates.Y;
-				cart[2] = cart_pos.Coordinates.Z;
-
-				//check block
-				/*std::vector<State> check_val;
-				check_val.push_back(joint_pos);
-				check_val.push_back(tau);
-				check_val.push_back(cart);
-				check = checker.VerifyViolation(check_val);*/
-				// add control to stop robot if i violate something
-				if(check)
-				{
-					std::cout<<"something went wrong"<<std::endl;
-					break;
-				}
-				std::cout << "reading and checking time: " << boost::chrono::duration_cast<boost::chrono::milliseconds>(boost::chrono::high_resolution_clock::now() - begin).count() << " ms\n";
-
-				// update cur time
-				cur_time = boost::chrono::duration_cast<boost::chrono::milliseconds>(boost::chrono::high_resolution_clock::now() - time_reference);
-				index = boost::chrono::round<boost::chrono::milliseconds>(cur_time).count();
-				if(index > (total_time-1) )
-					index = total_time - 1;
-
-				// i save the value of the index to compute mean and average error on the position error
-				Log_index.push_back(index + 1);
-
-				// DEBUG
-				//std::cout<< "index = " << index << std::endl;
-				//
-				//controllo
-				desired_values[0] = ff[0][index];
-				desired_values[1] = ff[1][index];
-				State result;
-
-				//DEBUG
-				//std::cout<< "desired value"<<std::endl;
-				//for(unsigned int ik =0;ik<desired_values[1].size();ik++)
-				//		std::cout<<desired_values[1][ik]<<" ";
-				//std::cout<<std::endl;
-				//---
-
-				begin = boost::chrono::high_resolution_clock::now();
-
-				if(CONTROL_TYPE.compare("joint") == 0 )
-				{
-					// controllo nei giunti (velocita)
-					arma::mat J = J0(joint_pos," ");
-					arma::mat J_sub = J.submat( 0,0, 2,5 );
-					arma::mat I=arma::eye(J.n_rows,J.n_rows);
-					arma::mat J_brack = arma::inv(J*J.t() + I*lambda);
-					arma::mat J_damp = J.t()*(J_brack);
-					//result = J_damp*(P*(desired_values[0] - cart) + desired_values[1]);
-					arma::mat J_sub_inv = arma::pinv(J_sub);
-					result = J_sub_inv*(P*(desired_values[0] - cart) + desired_values[1]);
-					result = result*(1/DEG);
-
-
-					//DEBUG
-					//State error = desired_values[0] - cart;
-
-					//std::cout<< "control error"<<std::endl;
-					//for(unsigned int ik =0;ik<error.size();ik++)
-					//		std::cout<<error[ik]<<" ";
-					//std::cout<<std::endl;
-					//---
-
-					// to manage error in the generation of the jacobian
-					result[0] = -result[0];
-
-					//limitazioni
-					//for(unsigned int j =0;j<result.size();j++)
-					//{
-					//	if(result[j]>30)
-					//		result[j] = 30;
-					//	if(result[j]<-30)
-					//		result[j] = -30;
-					//}
-
-					// conversione to kinova
-					trajectoryPoint.Position.Actuators.Actuator1 = result[0];
-					trajectoryPoint.Position.Actuators.Actuator2 = result[1];
-					trajectoryPoint.Position.Actuators.Actuator3 = result[2];
-					trajectoryPoint.Position.Actuators.Actuator4 = result[3];
-					trajectoryPoint.Position.Actuators.Actuator5 = result[4];
-					trajectoryPoint.Position.Actuators.Actuator6 = result[5];
-				}
-				else if(CONTROL_TYPE.compare("cartesian") == 0 )
-				{
-					//controllo cartesiano
-					result = desired_values[1];
-					trajectoryPoint.Position.CartesianPosition.X = result[0];
-					trajectoryPoint.Position.CartesianPosition.Y = result[1];
-					trajectoryPoint.Position.CartesianPosition.Z = result[2];
-
-					//DEBUG
-					std::cout<< trajectoryPoint.Position.CartesianPosition.X <<" ";
-					std::cout<< trajectoryPoint.Position.CartesianPosition.Y <<" ";
-					std::cout<< trajectoryPoint.Position.CartesianPosition.Z <<" ";
-					std::cout<<std::endl;
-					//---
-				}
-				(*MyEraseAllTrajectories)();
-				(*MySendBasicTrajectory)(trajectoryPoint);
-
-				std::cout << "control time : " << boost::chrono::duration_cast<boost::chrono::milliseconds>(boost::chrono::high_resolution_clock::now() - begin).count() << " ms\n";
-
-				if (!EXEC.load(boost::memory_order_acquire))
-				{
-					(*MyEraseAllTrajectories)();
-					break;
-
-				}
-				// update cur time
-				cur_time = boost::chrono::duration_cast<boost::chrono::milliseconds>(boost::chrono::high_resolution_clock::now() - time_reference);
+				std::cout<< "finish initialization"<<std::endl;
+				INITIALIZE = false;
 
 			}
 		}
 
-		if(!INITIALIZE)
+
+		// change the controller type per il controllore in uso
+		if(CONTROL_TYPE.compare("joint") == 0 )
+			trajectoryPoint.Position.Type = ANGULAR_VELOCITY;
+		else if(CONTROL_TYPE.compare("cartesian") == 0 )
+			trajectoryPoint.Position.Type = CARTESIAN_VELOCITY;
+		// inzializzo desired value
+		State init;
+		desired_values.push_back(init);
+		desired_values.push_back(init);
+
+		// initialize time reference
+		time_reference = boost::chrono::high_resolution_clock::now();
+		cur_time = boost::chrono::duration_cast<boost::chrono::milliseconds>(boost::chrono::high_resolution_clock::now() - time_reference);
+
+		while( cur_time.count() < total_time)
+		//while(true)
 		{
+			boost::chrono::high_resolution_clock::time_point begin = boost::chrono::high_resolution_clock::now();
+
+			// read from robot
+			(*MyGetAngularPosition)(position);
+			(*MyGetCartesianPosition)(cart_pos);
+			//(MyGetAngularForce)(joint_tau);
+			// save data
+			Log_position.push_back(position);
+			Log_cartesian.push_back(cart_pos);
+
+			//trascrivo torque
+			/*State tau(6);
+			tau[0]=joint_tau.Actuators.Actuator1;
+			tau[1]=joint_tau.Actuators.Actuator2;
+			tau[2]=joint_tau.Actuators.Actuator3;
+			tau[3]=joint_tau.Actuators.Actuator4;
+			tau[4]=joint_tau.Actuators.Actuator5;
+			tau[5]=joint_tau.Actuators.Actuator6;*/
+
+			// trascrivo joint
+			State joint_pos(6);
+			joint_pos[0]=position.Actuators.Actuator1;
+			joint_pos[1]=position.Actuators.Actuator2;
+			joint_pos[2]=position.Actuators.Actuator3;
+			joint_pos[3]=position.Actuators.Actuator4;
+			joint_pos[4]=position.Actuators.Actuator5;
+			joint_pos[5]=position.Actuators.Actuator6;
+
+			joint_pos = joint_pos*DEG;
+			// trascrivo cartesian
+			State cart(3);
+
+			cart[0] = cart_pos.Coordinates.X;
+			cart[1] = cart_pos.Coordinates.Y;
+			cart[2] = cart_pos.Coordinates.Z;
+
+			//check block
+			/*std::vector<State> check_val;
+			check_val.push_back(joint_pos);
+			check_val.push_back(tau);
+			check_val.push_back(cart);
+			check = checker.VerifyViolation(check_val);*/
+			// add control to stop robot if i violate something
+			if(check)
+			{
+				std::cout<<"something went wrong"<<std::endl;
+				break;
+			}
+			std::cout << "reading and checking time: " << boost::chrono::duration_cast<boost::chrono::milliseconds>(boost::chrono::high_resolution_clock::now() - begin).count() << " ms\n";
+
+			// update cur time
+			cur_time = boost::chrono::duration_cast<boost::chrono::milliseconds>(boost::chrono::high_resolution_clock::now() - time_reference);
+			index = boost::chrono::round<boost::chrono::milliseconds>(cur_time).count();
+			if(index > (total_time-1) )
+				index = total_time - 1;
+
+			// i save the value of the index to compute mean and average error on the position error
+			Log_index.push_back(index + 1);
+
+			// DEBUG
+			//std::cout<< "index = " << index << std::endl;
+			//
+			//controllo
+			desired_values[0] = ff[0][index];
+			desired_values[1] = ff[1][index];
+			State result;
+
+			//DEBUG
+			//std::cout<< "desired value"<<std::endl;
+			//for(unsigned int ik =0;ik<desired_values[1].size();ik++)
+			//		std::cout<<desired_values[1][ik]<<" ";
+			//std::cout<<std::endl;
+			//---
+
+			begin = boost::chrono::high_resolution_clock::now();
+
+			if(CONTROL_TYPE.compare("joint") == 0 )
+			{
+				// controllo nei giunti (velocita)
+				arma::mat J = J0(joint_pos," ");
+				arma::mat J_sub = J.submat( 0,0, 2,5 );
+				arma::mat I=arma::eye(J.n_rows,J.n_rows);
+				arma::mat J_brack = arma::inv(J*J.t() + I*lambda);
+				arma::mat J_damp = J.t()*(J_brack);
+				//result = J_damp*(P*(desired_values[0] - cart) + desired_values[1]);
+				arma::mat J_sub_inv = arma::pinv(J_sub);
+				result = J_sub_inv*(P*(desired_values[0] - cart) + desired_values[1]);
+				result = result*(1/DEG);
+
+
+				//DEBUG
+				//State error = desired_values[0] - cart;
+
+				//std::cout<< "control error"<<std::endl;
+				//for(unsigned int ik =0;ik<error.size();ik++)
+				//		std::cout<<error[ik]<<" ";
+				//std::cout<<std::endl;
+				//---
+
+				// to manage error in the generation of the jacobian
+				result[0] = -result[0];
+
+				//limitazioni
+				//for(unsigned int j =0;j<result.size();j++)
+				//{
+				//	if(result[j]>30)
+				//		result[j] = 30;
+				//	if(result[j]<-30)
+				//		result[j] = -30;
+				//}
+
+				// conversione to kinova
+				trajectoryPoint.Position.Actuators.Actuator1 = result[0];
+				trajectoryPoint.Position.Actuators.Actuator2 = result[1];
+				trajectoryPoint.Position.Actuators.Actuator3 = result[2];
+				trajectoryPoint.Position.Actuators.Actuator4 = result[3];
+				trajectoryPoint.Position.Actuators.Actuator5 = result[4];
+				trajectoryPoint.Position.Actuators.Actuator6 = result[5];
+			}
+			else if(CONTROL_TYPE.compare("cartesian") == 0 )
+			{
+				//controllo cartesiano
+				result = desired_values[1];
+				trajectoryPoint.Position.CartesianPosition.X = result[0];
+				trajectoryPoint.Position.CartesianPosition.Y = result[1];
+				trajectoryPoint.Position.CartesianPosition.Z = result[2];
+
+				//DEBUG
+				std::cout<< trajectoryPoint.Position.CartesianPosition.X <<" ";
+				std::cout<< trajectoryPoint.Position.CartesianPosition.Y <<" ";
+				std::cout<< trajectoryPoint.Position.CartesianPosition.Z <<" ";
+				std::cout<<std::endl;
+				//---
+			}
 			(*MyEraseAllTrajectories)();
+			(*MySendBasicTrajectory)(trajectoryPoint);
+
+			std::cout << "control time : " << boost::chrono::duration_cast<boost::chrono::milliseconds>(boost::chrono::high_resolution_clock::now() - begin).count() << " ms\n";
+
+			if (!EXEC.load(boost::memory_order_acquire))
+			{
+				(*MyEraseAllTrajectories)();
+				break;
+
+			}
+			// update cur time
+			cur_time = boost::chrono::duration_cast<boost::chrono::milliseconds>(boost::chrono::high_resolution_clock::now() - time_reference);
+
 		}
+		// close and stop execution
+		(*MyEraseAllTrajectories)();
 		safety_check->join();
 		cout << endl << "Calling the method CloseAPI()" << endl;
-
 		exit = (*MyCloseAPI)();
 		cout << "result of CloseAPI() = " << exit << endl;
-		if(!INITIALIZE)
-		{
-			WriteFile(Log_position,"joint_pos.mat");
-			WriteFile(Log_cartesian,"cart_pos.mat");
-			WriteFile(Log_index,"index.mat");
-		}
+		//dump result on a file
+		WriteFile(Log_position,"joint_pos.mat");
+		WriteFile(Log_cartesian,"cart_pos.mat");
+		WriteFile(Log_index,"index.mat");
+
 	}
 
 	return 0;

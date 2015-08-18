@@ -5,7 +5,7 @@ clc;
 deg = pi/180;
 
 namefile = {'cart_pos.txt','cart_vel.txt','start_joint_pos.txt','start_cart_pos.txt'};
-write_traj = true;
+write_traj = false;
 plot_subchain1 = [6];
 plot_target_link{1} = plot_subchain1;
 % reference parameters
@@ -69,7 +69,6 @@ for  t=plot_time_struct.ti:plot_time_struct.step:plot_time_struct.tf
    J =plot_bot.jacob0(cur_joint);
    J = J(1:3,1:end);
    qd = pinv(J)*pd_tot(:,index);
-   qd(1) = -qd(1);
    cur_joint = cur_joint + (qd*plot_time_struct.step)';
    all_joint = [all_joint ; cur_joint];
    index = index + 1;
