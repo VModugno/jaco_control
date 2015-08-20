@@ -56,8 +56,8 @@ int main()
 	std::vector<CartesianPosition> Log_cartesian;
 	std::vector<int> Log_index;
 
-	double lambda = 0;
-	double P = 1.5;
+	double lambda = 0.001;
+	double P = 5;
 	int limitation = 1;
 	std::vector<std::vector<State> > ff;
 	std::vector<State> desired_values;
@@ -279,14 +279,13 @@ int main()
 			if(CONTROL_TYPE.compare("joint") == 0 )
 			{
 				// controllo nei giunti (velocita)
-				arma::mat J = J0(joint_pos," ");
-				arma::mat J_sub = J.submat( 0,0, 2,5 );
+				arma::mat J = J0(joint_pos,"trasl");
 				arma::mat I=arma::eye(J.n_rows,J.n_rows);
 				arma::mat J_brack = arma::inv(J*J.t() + I*lambda);
 				arma::mat J_damp = J.t()*(J_brack);
-				//result = J_damp*(P*(desired_values[0] - cart) + desired_values[1]);
-				arma::mat J_sub_inv = arma::pinv(J_sub);
-				result = J_sub_inv*(P*(desired_values[0] - cart) + desired_values[1]);
+				result = J_damp*(P*(desired_values[0] - cart) + desired_values[1]);
+				//arma::mat J_sub_inv = arma::pinv(J_sub);
+				//result = J_sub_inv*(P*(desired_values[0] - cart) + desired_values[1]);
 				result = result*(1/DEG);
 
 
