@@ -180,7 +180,7 @@ int main()
 
 			}
 		}
-		// after init i lunch the security check thread
+		// after init i launch the security check thread
 		safety_check = new boost::thread(boost::bind(&EmergencyStop));
 
 		// change the controller type per il controllore in uso

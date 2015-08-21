@@ -34,9 +34,8 @@ plot_reference = References(plot_target_link,plot_type,plot_control_type,plot_tr
 plot_reference.BuildTrajs();
 
 
-%% plot scene
+%% generation of joint position and velocity
 plot_bot = MdlJaco();
-%plot_bot = MdlLBR4p();
 
 p_tot=[];
 pd_tot = [];
@@ -85,8 +84,4 @@ if (write_traj)
    WriteFF(start_cartesian_pos,6,namefile{4});
 end
 
-% test of the trajectory
-fps = 200;
-plot_bot.plot(all_joint,'fps',fps);
-   
 

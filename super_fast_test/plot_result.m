@@ -6,22 +6,8 @@ allpath=which('plot_result.m');
 path=fileparts(allpath);
 
 %% loqd ground truth
-p_ground=[];
-fid = fopen('cart_pos.txt');
-tline = fgetl(fid);
-while ischar(tline)
-    tline = fgetl(fid); % in this way i cut out the first line
-    if(tline == -1)
-        disp('read position completed');
-    else
-        tlin = strsplit(tline);
-        app=[];
-        for i=1:size(tlin,2)
-        app = [app,str2double(tlin{1,i})];
-        end
-        p_ground = [ p_ground;app];
-    end 
-end
+load('ground_truth.mat');
+p_ground=p;
 %% read results 
 
 path_joints = 'joint_pos.mat';
