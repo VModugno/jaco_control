@@ -32,7 +32,7 @@ tolSmall=15;
 tolHigh=40;
 
 figure
-plot(all_joints);
+plot(index,all_joints);
 grid on;
 leg = legend('q1','q2','q3','q4','q5','q6');
 set(leg,'FontSize',dim_leg,'Interpreter','latex','Location','northeast');
@@ -41,8 +41,28 @@ set(xlab,'FontSize',dim_lab,'Interpreter','latex');
 ylab=ylabel('deg'); % y-axis label
 set(ylab,'FontSize',dim_lab,'Interpreter','latex');
 
+q_ground_to_plot = q_ground(index,:);
+
+figure; 
+for ijl = 1:6
+    subplot(3,3,ijl)
+    plot(index,all_joints(:,ijl),'b');
+    hold on;
+    plot(index,q_ground_to_plot(:,ijl),'r');
+    grid on;
+    name_q_exec = strcat('q',num2str(ijl));
+    name_q_des = strcat('GTq',num2str(ijl));
+    leg = legend(name_q_exec,name_q_des);
+    set(leg,'FontSize',dim_leg,'Location','northeast');
+    xlab=xlabel('t'); % x-axis label
+    set(xlab,'FontSize',dim_lab,'Interpreter','latex');
+    ylab=ylabel('deg'); % y-axis label
+    set(ylab,'FontSize',dim_lab,'Interpreter','latex');
+    %set(gca, 'Position', [0.1 0.1 0.3 0.85])
+end
+
 figure
-plot(all_cartesian(:,1:3));
+plot(index,all_cartesian(:,1:3));
 grid on;
 legend('X','Y','Z');
 set(leg,'FontSize',dim_leg,'Interpreter','latex','Location','best');
@@ -52,7 +72,7 @@ ylab=ylabel('meter'); % y-axis label
 set(ylab,'FontSize',dim_lab,'Interpreter','latex');
 
 figure
-plot(all_cartesian(:,4:6));
+plot(index,all_cartesian(:,4:6));
 grid on;
 legend('roll','pitch','yaw');
 set(leg,'FontSize',dim_leg,'Interpreter','latex','Location','Best');
