@@ -5,7 +5,7 @@ close all
 clc
 
 % Integral action 
-P = 10;
+P = 0;
 %damping factor 
 lambda = 0.001;
 
@@ -47,12 +47,19 @@ index = 1;
 tot_index = size(p,1);
 for t = plot_time_struct.ti:plot_time_struct.step:plot_time_struct.tf
    cur_cart = plot_bot.fkine(cur_joint);
-   cur_cart = cur_cart(1:3,4);
+   if (size(p,2) == 3)
+       cur_cart = cur_cart(1:3,4)';
+   elseif(size(p,2) == 6)
+       e_e = cur_cart(1:3,4)';
+       euler_angle = tr2eul(cur_cart(1:3,1:3));
+       cur_cart = [e_e , euler_angle];
+   end
    J =plot_bot.jacob0(cur_joint);
-   J = J(1:3,1:end);
-   I=eye(3,3);
+   
+   J = J(1:size(p,2),1:end);
+   I=eye(size(p,2),size(p,2));
    J_damp = J'/(J*J' + I*lambda);
-   qd = J_damp*(P*(p(index,:)' - cur_cart) + pd(index,:)');
+   qd = J_damp*(P*(p(index,:)' - cur_cart') + pd(index,:)');
    %qd = pinv(J)*pd(index,:)';
    cur_joint = cur_joint + (qd*plot_time_struct.step);
    q = [q , cur_joint];

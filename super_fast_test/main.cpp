@@ -57,7 +57,7 @@ int main()
 	std::vector<int> Log_index;
 
 	double lambda = 0.001;
-	double P = 5;
+	double P = 0;
 	int limitation = 1;
 	std::vector<std::vector<State> > ff;
 	std::vector<State> desired_values;
@@ -230,11 +230,19 @@ int main()
 
 			joint_pos = joint_pos*DEG;
 			// trascrivo cartesian
-			State cart(3);
+			State cart(6);
 
 			cart[0] = cart_pos.Coordinates.X;
 			cart[1] = cart_pos.Coordinates.Y;
 			cart[2] = cart_pos.Coordinates.Z;
+			cart[3] = cart_pos.Coordinates.ThetaX;
+			cart[4] = cart_pos.Coordinates.ThetaY;
+			cart[5] = cart_pos.Coordinates.ThetaZ;
+
+			if(desired_values[0].size()==3)
+			{
+				cart.resize(3);
+			}
 
 			//check block
 			/*std::vector<State> check_val;
@@ -279,7 +287,16 @@ int main()
 			if(CONTROL_TYPE.compare("joint") == 0 )
 			{
 				// controllo nei giunti (velocita)
-				arma::mat J = J0(joint_pos,"trasl");
+				arma::mat J;
+				if(desired_values[0].size()==3)
+				{
+					J = J0(joint_pos,"trasl");
+				}
+				else
+				{
+					J = J0(joint_pos," ");
+				}
+
 				arma::mat I=arma::eye(J.n_rows,J.n_rows);
 				arma::mat J_brack = arma::inv(J*J.t() + I*lambda);
 				arma::mat J_damp = J.t()*(J_brack);

@@ -98,7 +98,7 @@ set(leg,'FontSize',dim_leg,'Interpreter','latex','Location','Best');
 
 % mean and average between the desired trajectory and the executed one 
 number_of_sample = size(all_cartesian,1);
-p_ground = p_ground(index,:);
+p_ground = p_ground(index,1:3);
 p_err = p_ground - all_cartesian(:,1:3);
 p_mean_x = sum(p_err(:,1))/number_of_sample;
 p_mean_y = sum(p_err(:,2))/number_of_sample;
