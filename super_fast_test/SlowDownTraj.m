@@ -16,6 +16,8 @@ load('ground_truth.mat');
 %% interpolation
 new_p=Interpolation(p,h,current_final,new_final_time);
 new_pd=Interpolation(pd,h,current_final,new_final_time);
+new_qd_ground=Interpolation(qd_ground,h,current_final,new_final_time);
+
 
 %%DEBUG
 figure; hold on;
@@ -24,14 +26,20 @@ plot3(new_p(:,1),new_p(:,2),new_p(:,3),'r');
 figure; hold on;
 plot3(pd(:,1),pd(:,2),pd(:,3),'b');
 plot3(new_pd(:,1),new_pd(:,2),new_pd(:,3),'r');
+figure; 
+plot(qd_ground);
+figure
+plot(new_qd_ground);
 
 p = new_p;
 pd = new_pd;
+qd_ground = new_qd_ground;
 
 %% write ff back
 WriteFF(new_p,3,strcat(path,'/','cart_pos.txt'));
 WriteFF(new_pd,3,strcat(path,'/','cart_vel.txt'));
-save('ground_truth.mat','p','pd');
+WriteFF(new_qd_ground,6,strcat(path,'/','joint_vel.txt'));
+save('ground_truth.mat','p','pd','q_ground','qd_ground');
 
 end
 

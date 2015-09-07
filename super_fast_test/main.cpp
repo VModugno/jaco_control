@@ -16,6 +16,9 @@ int main()
 	 int total_time = 20000; // 20 s
 	 int time_step = 1; // ms
 	 int index = 0;
+	 int refresh_threshold = 200000;
+	 int time_refresh_threshold = 14000;
+	 int counter = 0;
 
 
 	//Function pointers to the functions we need
@@ -49,7 +52,9 @@ int main()
 	std::vector<std::string> name_start_point_joint (_name_start_point_joint,End(_name_start_point_joint));
 	const char * _name_start_point_cart[] = {"start_cart_pos.txt"};
 	std::vector<std::string> name_start_point_cart (_name_start_point_cart,End(_name_start_point_cart));
-	const char * _namefiles[] = {"cart_pos.txt","cart_vel.txt"};
+	const char * _name_joint_vel[] = {"joint_vel.txt"};
+	std::vector<std::string> name_joint_vel (_name_start_point_cart,End(_name_start_point_cart));
+	const char * _namefiles[] = {"cart_pos.txt","cart_vel.txt","joint_vel.txt"};
 	std::vector<std::string> namefile (_namefiles,End(_namefiles));
 
 	std::vector<AngularPosition> Log_position;
@@ -117,9 +122,13 @@ int main()
 
 		std::vector<State> start_point;
 		if(CONTROL_TYPE.compare("joint") == 0 )
+		{
 			ReadFile(_name_start_point_joint[0],start_point);
+		}
 		else if(CONTROL_TYPE.compare("cartesian") == 0 )
+		{
 			ReadFile(_name_start_point_cart[0],start_point);
+		}
 
 		//DEBUG
 		std::cout<< "start value"<<std::endl;
@@ -230,18 +239,19 @@ int main()
 
 			joint_pos = joint_pos*DEG;
 			// trascrivo cartesian
-			State cart(6);
+			State cart(3);
 
 			cart[0] = cart_pos.Coordinates.X;
 			cart[1] = cart_pos.Coordinates.Y;
 			cart[2] = cart_pos.Coordinates.Z;
-			cart[3] = cart_pos.Coordinates.ThetaX;
-			cart[4] = cart_pos.Coordinates.ThetaY;
-			cart[5] = cart_pos.Coordinates.ThetaZ;
+			//cart[3] = cart_pos.Coordinates.ThetaX;
+			//cart[4] = cart_pos.Coordinates.ThetaY;
+			//cart[5] = cart_pos.Coordinates.ThetaZ;
 
 			if(desired_values[0].size()==3)
 			{
 				cart.resize(3);
+				std::cout<< "sono dentro"<<std::endl;
 			}
 
 			//check block
@@ -276,10 +286,14 @@ int main()
 			State result;
 
 			//DEBUG
-			//std::cout<< "desired value"<<std::endl;
-			//for(unsigned int ik =0;ik<desired_values[1].size();ik++)
-			//		std::cout<<desired_values[1][ik]<<" ";
-			//std::cout<<std::endl;
+			std::cout<< "desired value"<<std::endl;
+						for(unsigned int ik =0;ik<desired_values[1].size();ik++)
+								std::cout<<desired_values[0][ik]<<" ";
+						std::cout<<std::endl;
+			std::cout<< "desired value"<<std::endl;
+			for(unsigned int ik =0;ik<desired_values[1].size();ik++)
+					std::cout<<cart[ik]<<" ";
+			std::cout<<std::endl;
 			//---
 
 			begin = boost::chrono::high_resolution_clock::now();
@@ -300,11 +314,14 @@ int main()
 				arma::mat I=arma::eye(J.n_rows,J.n_rows);
 				arma::mat J_brack = arma::inv(J*J.t() + I*lambda);
 				arma::mat J_damp = J.t()*(J_brack);
-				result = J_damp*(P*(desired_values[0] - cart) + desired_values[1]);
+				result = J_damp*(P*(desired_values[0] - cart)) + ff[2][index]; //desired_values[1]);
 				//arma::mat J_sub_inv = arma::pinv(J_sub);
 				//result = J_sub_inv*(P*(desired_values[0] - cart) + desired_values[1]);
-				result = result*(1/DEG);
+				//result = result*(1/DEG);
 
+				//result = ff[2][index];
+
+				result = result*(1/DEG);
 
 				//DEBUG
 				//State error = desired_values[0] - cart;
@@ -316,7 +333,7 @@ int main()
 				//---
 
 				// to manage error in the generation of the jacobian
-				result[0] = -result[0];
+				//result[0] = -result[0];
 
 				//limitazioni
 				//for(unsigned int j =0;j<result.size();j++)
@@ -350,7 +367,16 @@ int main()
 				std::cout<<std::endl;
 				//---
 			}
-			(*MyEraseAllTrajectories)();
+
+			// in this way i can apply MyEraseAllTrajectories from a specific time
+			if (index > time_refresh_threshold)
+			{
+				if(counter >= refresh_threshold)
+				{
+					(*MyEraseAllTrajectories)();
+					counter = 0;
+				}
+			}
 			(*MySendBasicTrajectory)(trajectoryPoint);
 
 			std::cout << "control time : " << boost::chrono::duration_cast<boost::chrono::milliseconds>(boost::chrono::high_resolution_clock::now() - begin).count() << " ms\n";
@@ -363,6 +389,8 @@ int main()
 			}
 			// update cur time
 			cur_time = boost::chrono::duration_cast<boost::chrono::milliseconds>(boost::chrono::high_resolution_clock::now() - time_reference);
+			// update counter
+			counter++;
 
 		}
 		// close and stop execution

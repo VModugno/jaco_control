@@ -5,7 +5,7 @@ close all
 clc
 
 % Integral action 
-P = 0;
+P = 2;
 %damping factor 
 lambda = 0.001;
 
@@ -42,26 +42,29 @@ plot_time_struct.tf = round(size(p,1)*plot_time_struct.step);
 
 %% compute joint position 
 cur_joint = start_joint_pos';
-q = [];
+%q = [];
+q = start_joint_pos';
 index = 1;
 tot_index = size(p,1);
 for t = plot_time_struct.ti:plot_time_struct.step:plot_time_struct.tf
-   cur_cart = plot_bot.fkine(cur_joint);
-   if (size(p,2) == 3)
-       cur_cart = cur_cart(1:3,4)';
-   elseif(size(p,2) == 6)
-       e_e = cur_cart(1:3,4)';
-       euler_angle = tr2eul(cur_cart(1:3,1:3));
-       cur_cart = [e_e , euler_angle];
-   end
-   J =plot_bot.jacob0(cur_joint);
+%    cur_cart = plot_bot.fkine(cur_joint);
+%    if (size(p,2) == 3)
+%        cur_cart = cur_cart(1:3,4)';
+%    elseif(size(p,2) == 6)
+%        e_e = cur_cart(1:3,4)';
+%        euler_angle = tr2eul(cur_cart(1:3,1:3));
+%        cur_cart = [e_e , euler_angle];
+%    end
+%    J =plot_bot.jacob0(cur_joint);
+%    
+%    J = J(1:size(p,2),1:end);
+%    I=eye(size(p,2),size(p,2));
+   %J_damp = J'/(J*J' + I*lambda);
    
-   J = J(1:size(p,2),1:end);
-   I=eye(size(p,2),size(p,2));
-   J_damp = J'/(J*J' + I*lambda);
-   qd = J_damp*(P*(p(index,:)' - cur_cart') + pd(index,:)');
+%   qd = J\(P*(p(index,:)' - cur_cart') + pd(index,:)');
    %qd = pinv(J)*pd(index,:)';
-   cur_joint = cur_joint + (qd*plot_time_struct.step);
+  
+   cur_joint = cur_joint + (qd_ground(index,:)'*plot_time_struct.step);
    q = [q , cur_joint];
    
    percent = (index/tot_index)*100;

@@ -56,9 +56,10 @@ while ischar(tline)
     end
 end
 % covert from rad to deg
-q_ground = q_ground*rad;
+q_ground = q_ground*rad; % to reintroduce
+
 qd_ground=[];
-fid = fopen('joint_pos.txt');
+fid = fopen('joint_vel.txt');
 tline = fgetl(fid);
 while ischar(tline)
     tline = fgetl(fid); % in this way i cut out the first line
