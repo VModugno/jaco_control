@@ -11,13 +11,14 @@ int main()
 	 boost::thread* safety_check;
 	 bool INITIALIZE =	true; // if you want to initialize
 	 std::string CONTROL_TYPE = "joint"; // "joint" "cartesian"
+	 bool save_torque = true;
 	 boost::chrono::high_resolution_clock::time_point time_reference;
 	 boost::chrono::milliseconds cur_time;
 	 int total_time = 20000; // 20 s
 	 int time_step = 1; // ms
 	 int index = 0;
-	 int refresh_threshold = 200000;
-	 int time_refresh_threshold = 14000;
+	 int refresh_threshold = 0;
+	 int time_refresh_threshold = 0;
 	 int counter = 0;
 
 
@@ -59,10 +60,11 @@ int main()
 
 	std::vector<AngularPosition> Log_position;
 	std::vector<CartesianPosition> Log_cartesian;
+	std::vector<AngularPosition> Log_tau;
 	std::vector<int> Log_index;
 
 	double lambda = 0.001;
-	double P = 0;
+	double P = 5;
 	int limitation = 1;
 	std::vector<std::vector<State> > ff;
 	std::vector<State> desired_values;
@@ -201,7 +203,7 @@ int main()
 		State init;
 		desired_values.push_back(init);
 		desired_values.push_back(init);
-
+		desired_values.push_back(init);
 		// initialize time reference
 		time_reference = boost::chrono::high_resolution_clock::now();
 		cur_time = boost::chrono::duration_cast<boost::chrono::milliseconds>(boost::chrono::high_resolution_clock::now() - time_reference);
@@ -212,21 +214,23 @@ int main()
 			boost::chrono::high_resolution_clock::time_point begin = boost::chrono::high_resolution_clock::now();
 
 			// read from robot
-			(*MyGetAngularPosition)(position);
-			(*MyGetCartesianPosition)(cart_pos);
-			//(MyGetAngularForce)(joint_tau);
-			// save data
-			Log_position.push_back(position);
-			Log_cartesian.push_back(cart_pos);
 
-			//trascrivo torque
-			/*State tau(6);
-			tau[0]=joint_tau.Actuators.Actuator1;
-			tau[1]=joint_tau.Actuators.Actuator2;
-			tau[2]=joint_tau.Actuators.Actuator3;
-			tau[3]=joint_tau.Actuators.Actuator4;
-			tau[4]=joint_tau.Actuators.Actuator5;
-			tau[5]=joint_tau.Actuators.Actuator6;*/
+			(*MyGetCartesianPosition)(cart_pos);
+			(*MyGetAngularPosition)(position);
+			if(save_torque)
+			{
+				(MyGetAngularForce)(joint_tau);
+			}
+
+
+			// save data
+			Log_cartesian.push_back(cart_pos);
+			Log_position.push_back(position);
+			if(save_torque)
+				Log_tau.push_back(joint_tau);
+
+
+
 
 			// trascrivo joint
 			State joint_pos(6);
@@ -251,7 +255,6 @@ int main()
 			if(desired_values[0].size()==3)
 			{
 				cart.resize(3);
-				std::cout<< "sono dentro"<<std::endl;
 			}
 
 			//check block
@@ -278,22 +281,24 @@ int main()
 			Log_index.push_back(index + 1);
 
 			// DEBUG
-			//std::cout<< "index = " << index << std::endl;
+			std::cout<< "index = " << index << std::endl;
 			//
 			//controllo
 			desired_values[0] = ff[0][index];
 			desired_values[1] = ff[1][index];
+			desired_values[2] = ff[2][index];
 			State result;
 
 			//DEBUG
-			std::cout<< "desired value"<<std::endl;
-						for(unsigned int ik =0;ik<desired_values[1].size();ik++)
-								std::cout<<desired_values[0][ik]<<" ";
-						std::cout<<std::endl;
-			std::cout<< "desired value"<<std::endl;
-			for(unsigned int ik =0;ik<desired_values[1].size();ik++)
-					std::cout<<cart[ik]<<" ";
-			std::cout<<std::endl;
+			//std::cout<< "desired value 1"<<std::endl;
+			//for(unsigned int ik =0;ik<desired_values[1].size();ik++)
+			//		std::cout<<desired_values[1][ik]<<" ";
+			//std::cout<<std::endl;
+
+			//std::cout<< "desired value 1"<<std::endl;
+			//for(unsigned int ik =0;ik<desired_values[1].size();ik++)
+			//		std::cout<<desired_values[1][ik]<<" ";
+			//std::cout<<std::endl;
 			//---
 
 			begin = boost::chrono::high_resolution_clock::now();
@@ -314,23 +319,22 @@ int main()
 				arma::mat I=arma::eye(J.n_rows,J.n_rows);
 				arma::mat J_brack = arma::inv(J*J.t() + I*lambda);
 				arma::mat J_damp = J.t()*(J_brack);
-				result = J_damp*(P*(desired_values[0] - cart)) + ff[2][index]; //desired_values[1]);
+				result = J_damp*(P*(desired_values[0] - cart));// + desired_values[1]);
+				result[0] = -result[0];
 				//arma::mat J_sub_inv = arma::pinv(J_sub);
 				//result = J_sub_inv*(P*(desired_values[0] - cart) + desired_values[1]);
-				//result = result*(1/DEG);
 
-				//result = ff[2][index];
+				result = result + ff[2][index];
 
 				result = result*(1/DEG);
 
 				//DEBUG
 				//State error = desired_values[0] - cart;
-
-				//std::cout<< "control error"<<std::endl;
-				//for(unsigned int ik =0;ik<error.size();ik++)
-				//		std::cout<<error[ik]<<" ";
+				//std::cout<< "result"<<std::endl;
+				//for(unsigned int ik =0;ik<result.size();ik++)
+				//		std::cout<<result[ik]<<" ";
 				//std::cout<<std::endl;
-				//---
+				//----
 
 				// to manage error in the generation of the jacobian
 				//result[0] = -result[0];
@@ -369,14 +373,14 @@ int main()
 			}
 
 			// in this way i can apply MyEraseAllTrajectories from a specific time
-			if (index > time_refresh_threshold)
+			/*if (index > time_refresh_threshold)
 			{
 				if(counter >= refresh_threshold)
-				{
+				{*/
 					(*MyEraseAllTrajectories)();
-					counter = 0;
+					/*counter = 0;
 				}
-			}
+			}*/
 			(*MySendBasicTrajectory)(trajectoryPoint);
 
 			std::cout << "control time : " << boost::chrono::duration_cast<boost::chrono::milliseconds>(boost::chrono::high_resolution_clock::now() - begin).count() << " ms\n";
@@ -400,6 +404,10 @@ int main()
 		exit = (*MyCloseAPI)();
 		cout << "result of CloseAPI() = " << exit << endl;
 		//dump result on a file
+		if(save_torque)
+			WriteFile(Log_tau,"joint_tau.mat");
+
+		WriteFile(Log_position,"joint_pos.mat");
 		WriteFile(Log_position,"joint_pos.mat");
 		WriteFile(Log_cartesian,"cart_pos.mat");
 		WriteFile(Log_index,"index.mat");

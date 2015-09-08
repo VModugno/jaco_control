@@ -5,7 +5,7 @@ clc;
 deg = pi/180;
 
 namefile = {'cart_pos.txt','cart_vel.txt','start_joint_pos.txt','start_cart_pos.txt'};
-write_traj = false;
+write_traj = true;
 plot_subchain1 = [6];
 plot_target_link{1} = plot_subchain1;
 % reference parameters
@@ -83,5 +83,3 @@ if (write_traj)
    WriteFF(joint_pose,6,namefile{3});
    WriteFF(start_cartesian_pos,6,namefile{4});
 end
-
-

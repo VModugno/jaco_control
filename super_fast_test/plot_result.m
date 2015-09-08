@@ -12,15 +12,18 @@ p_ground=p;
 
 path_joints = 'joint_pos.mat';
 path_cart = 'cart_pos.mat';
+path_tau = 'joint_tau';
 path_index = 'index.mat';
 
 
 path_joints = strcat(path,'/',path_joints);
 path_cart =   strcat(path,'/',path_cart);
+path_tau =   strcat(path,'/',path_tau);
 path_index =  strcat(path,'/',path_index);
 
 all_joints = load(path_joints,'-ascii');
 all_cartesian = load(path_cart,'-ascii');
+all_tau = load(path_tau,'-ascii');
 index = load(path_index,'-ascii');
 
 %% plot results
@@ -39,6 +42,16 @@ set(leg,'FontSize',dim_leg,'Interpreter','latex','Location','northeast');
 xlab=xlabel('t'); % x-axis label
 set(xlab,'FontSize',dim_lab,'Interpreter','latex');
 ylab=ylabel('deg'); % y-axis label
+set(ylab,'FontSize',dim_lab,'Interpreter','latex');
+
+figure
+plot(index,all_tau);
+grid on;
+leg = legend('u1','u2','u3','u4','u5','u6');
+set(leg,'FontSize',dim_leg,'Interpreter','latex','Location','northeast');
+xlab=xlabel('t'); % x-axis label
+set(xlab,'FontSize',dim_lab,'Interpreter','latex');
+ylab=ylabel('N*m'); % y-axis label
 set(ylab,'FontSize',dim_lab,'Interpreter','latex');
 
 q_ground_to_plot = q_ground(index,:);
